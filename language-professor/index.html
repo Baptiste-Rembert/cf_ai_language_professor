@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Profesor - Cloudflare Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-white w-full max-w-2xl rounded-xl shadow-lg flex flex-col h-[80vh]">
+        <div class="bg-orange-500 text-white p-4 rounded-t-xl flex justify-between items-center">
+            <h1 class="text-xl font-bold">🇪🇸 El Profesor (Cloudflare AI)</h1>
+            <button id="recapBtn" class="bg-orange-700 hover:bg-orange-800 px-3 py-1 rounded text-sm font-semibold transition">
+                End the lesson (/recap)
+            </button>
+        </div>
+
+        <div id="chatBox" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-4 bg-slate-50">
+            <div class="self-start bg-gray-200 text-gray-800 p-3 rounded-lg max-w-[80%]">
+                ¡Hola! Soy tu profesor de español. ¿De qué quieres hablar hoy?
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-gray-200 flex gap-2">
+            <input type="text" id="userInput" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-orange-500" placeholder="Escribe tu mensaje aquí..." onkeypress="handleEnter(event)">
+            <button id="sendBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const WORKER_URL = "https://language-professor.babaremb.workers.dev";
+        
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const recapBtn = document.getElementById('recapBtn');
+
+        function addMessage(text, isUser) {
+            const div = document.createElement('div');
+            div.className = `p-3 rounded-lg max-w-[80%] ${isUser ? 'self-end bg-orange-500 text-white' : 'self-start bg-gray-200 text-gray-800'}`;
+            div.textContent = text;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage(text) {
+            if (!text.trim()) return;
+            
+            userInput.value = '';
+            userInput.disabled = true;
+            addMessage(text, true);
+
+            try {
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    body: text
+                });
+                
+                const reply = await response.text();
+                addMessage(reply, false);
+            } catch (error) {
+                addMessage("Can't reach Worker...", false);
+                console.error(error);
+            } finally {
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        sendBtn.addEventListener('click', () => sendMessage(userInput.value));
+        recapBtn.addEventListener('click', () => sendMessage('/recap'));
+        
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage(userInput.value);
+        }
+    </script>
+</body>
+</html>
