@@ -11,9 +11,14 @@
     <div class="bg-white w-full max-w-2xl rounded-xl shadow-lg flex flex-col h-[80vh]">
         <div class="bg-orange-500 text-white p-4 rounded-t-xl flex justify-between items-center">
             <h1 class="text-xl font-bold">🇪🇸 El Profesor (Cloudflare AI)</h1>
-            <button id="recapBtn" class="bg-orange-700 hover:bg-orange-800 px-3 py-1 rounded text-sm font-semibold transition">
-                End the lesson (/recap)
-            </button>
+            <div class="flex gap-2">
+                <button id="viewFlashcardsBtn" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm font-semibold transition hidden">
+                    See the Flashcards
+                </button>
+                <button id="recapBtn" class="bg-orange-700 hover:bg-orange-800 px-3 py-1 rounded text-sm font-semibold transition">
+                    End the lesson (/recap)
+                </button>
+            </div>
         </div>
 
         <div id="chatBox" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-4 bg-slate-50">
@@ -37,6 +42,7 @@
         const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
         const recapBtn = document.getElementById('recapBtn');
+        const viewFlashcardsBtn = document.getElementById('viewFlashcardsBtn');
 
         function addMessage(text, isUser) {
             const div = document.createElement('div');
@@ -61,6 +67,13 @@
                 
                 const reply = await response.text();
                 addMessage(reply, false);
+
+                // Reveal the "View Flashcards" button if the user just ended the lesson
+                if (text.trim().toLowerCase() === '/recap') {
+                    viewFlashcardsBtn.classList.remove('hidden');
+                    recapBtn.classList.add('hidden');
+                }
+
             } catch (error) {
                 addMessage("Can't reach Worker...", false);
                 console.error(error);
@@ -73,6 +86,35 @@
         sendBtn.addEventListener('click', () => sendMessage(userInput.value));
         recapBtn.addEventListener('click', () => sendMessage('/recap'));
         
+        viewFlashcardsBtn.addEventListener('click', async () => {
+            const originalText = viewFlashcardsBtn.textContent;
+            viewFlashcardsBtn.textContent = "Loading...";
+            try {
+                const response = await fetch(WORKER_URL, { method: 'GET' });
+                const cards = await response.json();
+                
+                if (!cards || cards.length === 0) {
+                    addMessage("⏳ The workflow is still processing, click again in a few seconds...", false);
+                } else {
+                    let htmlList = "<strong>Your Flashcards 📚</strong><ul class='list-disc pl-4 mt-2 space-y-2'>";
+                    cards.forEach(card => {
+                        htmlList += `<li><strong>🇪🇸 ${card.spanish}</strong> <br> 🇬🇧 ${card.english}</li>`;
+                    });
+                    htmlList += "</ul>";
+                    
+                    const div = document.createElement('div');
+                    div.className = `p-3 rounded-lg max-w-[80%] self-start bg-blue-100 text-blue-900 border border-blue-200`;
+                    div.innerHTML = htmlList;
+                    chatBox.appendChild(div);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            } catch (err) {
+                 addMessage("Error fetching flashcards...", false);
+            } finally {
+                 viewFlashcardsBtn.textContent = originalText;
+            }
+        });
+
         function handleEnter(e) {
             if (e.key === 'Enter') sendMessage(userInput.value);
         }

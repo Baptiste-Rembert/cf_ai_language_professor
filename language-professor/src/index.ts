@@ -147,14 +147,21 @@ export class FlashcardWorkflow extends WorkflowEntrypoint<Env, { conversation: {
       );
 
       try {
-        // Clean up the response from potential Markdown backticks and parse the JSON
-        let text = aiResponse.response.trim();
+        let textOrObj = aiResponse.response;
+        
+        // If the AI SDK already parsed it into an array/object, return it directly
+        if (typeof textOrObj !== "string") {
+          return textOrObj;
+        }
+
+        // Clean up the response from potential Markdown backticks and parse the JSON string
+        let text = textOrObj.trim();
         if (text.startsWith("\`\`\`json")) text = text.substring(7);
         if (text.startsWith("\`\`\`")) text = text.substring(3);
         if (text.endsWith("\`\`\`")) text = text.substring(0, text.length - 3);
         return JSON.parse(text.trim());
       } catch (err: any) {
-        return [{ error: "Failed to parse AI output", raw: aiResponse.response }];
+        return [{ error: "Failed to parse AI output", raw: aiResponse.response, msg: err.message }];
       }
     });
 
